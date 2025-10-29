@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "phishlens",
+  "version": "1.0.0",
+  "description": "Detect risky emails and links to protect against phishing attacks.",
+  "action": { "default_popup": "popup/popup.html" },
+  "permissions": ["storage", "activeTab", "scripting", "alarms"],
+  "host_permissions": [
+    "*://mail.google.com/*",
+    "*://outlook.office.com/*",
+    "*://outlook.live.com/*",
+    "*://*.googleusercontent.com/*",
+    "*://*/*"
+  ],
+  "content_scripts": [{
+    "matches": [
+      "*://mail.google.com/*",
+      "*://outlook.office.com/*",
+      "*://outlook.live.com/*"
+    ],
+    "js": ["rules.js", "queue.js", "comms.js", "api.js", "contentScript.js"],
+    "run_at": "document_idle"
+  }],
+  "background": { "service_worker": "background.js" },
+  "options_page": "options/options.html"
+}

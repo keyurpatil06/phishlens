@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <link rel="stylesheet" href="popup.css"/>
+    <title>PhishLens</title>
+  </head>
+  <body>
+    <header class="head">
+      <div class="dot"></div>
+      <h1>PhishLens</h1>
+      <a class="opt" href="../options/options.html" target="_blank">Options</a>
+    </header>
+
+    <section id="summary" class="card">
+      <h2>Current Email</h2>
+      <div id="status">Open an email to analyze.</div>
+      <ul id="reasons"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Tips</h2>
+      <ul class="tips">
+        <li>Hover links to preview the real domain.</li>
+        <li>Beware urgent requests or gift card asks.</li>
+        <li>Check sender domain, not just display name.</li>
+      </ul>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

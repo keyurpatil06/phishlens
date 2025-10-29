@@ -1,0 +1,42 @@
+body {
+  margin: 0;
+  background: #0b0f19;
+  color: #e2e8f0;
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Arial;
+}
+.wrap {
+  max-width: 600px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+h1 {
+  font-size: 20px;
+  margin: 0 0 16px;
+  color: #cbd5e1;
+}
+label {
+  display: block;
+  margin: 12px 0;
+}
+input {
+  width: 100%;
+  padding: 10px 12px;
+  background: #101826;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  color: #e2e8f0;
+}
+button {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #1f2937;
+  background: #1f2937;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+#msg {
+  margin-top: 10px;
+  color: #93c5fd;
+}
