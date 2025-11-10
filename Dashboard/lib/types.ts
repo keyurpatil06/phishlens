@@ -1,28 +1,31 @@
-export type RiskLevel = "low" | "medium" | "high";
-
-export type RiskCheck = {
-  id: string;
-  label: string;
-  flagged: boolean;
-  impact: number;
-  details?: string;
+// lib/types.ts
+export type VTStats = {
+  harmless: number;
+  malicious: number;
+  suspicious: number;
+  timeout: number;
+  undetected: number;
 };
 
-export type RiskAssessment = {
+export type UrlScanResult = {
   url: string;
-  type: "url" | "email";
-  stats: {
-    harmless: number;
-    malicious: number;
-    suspicious: number;
-    timeout: number;
-    undetected: number;
-  };
-  total: number;
-  malicious: boolean;
-  checks?: RiskCheck[];
+  stats?: VTStats;
+  total?: number;
+  malicious?: boolean;
+  error?: string;
 };
 
-export type Risk = {
-  result: RiskAssessment;
+export type UrlScanResponse = {
+  type: "url";
+  result: UrlScanResult;
 };
+
+export type EmailScanResponse = {
+  type: "email";
+  totalUrls: number;
+  results: UrlScanResult[];
+  hasMalicious: boolean;
+};
+
+// union for convenience
+export type RiskAssessment = UrlScanResponse | EmailScanResponse;

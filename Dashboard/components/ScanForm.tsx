@@ -7,26 +7,33 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import type { RiskAssessment } from "@/lib/types"
+// where you defined postScan (e.g. in ScanForm file)
+import type { RiskAssessment } from "@/lib/types";
 
-// --- API Call Helper ---
 async function postScan(
   _key: string,
   { arg }: { arg: { url?: string; email?: string } }
-) {
+): Promise<RiskAssessment> {
   const res = await fetch("/api/scan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(arg),
-  })
+  });
 
   if (!res.ok) {
-    const errorText = await res.text()
-    throw new Error(errorText || "Scan failed")
+    // try to get json error first
+    let text = await res.text().catch(() => "");
+    try {
+      const json = JSON.parse(text || "{}");
+      throw new Error(json.error || text || "Scan failed");
+    } catch {
+      throw new Error(text || "Scan failed");
+    }
   }
 
-  return (await res.json()) as RiskAssessment
+  return (await res.json()) as RiskAssessment;
 }
+
 
 export function ScanForm({
   onScanned,

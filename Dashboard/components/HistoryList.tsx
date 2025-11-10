@@ -20,18 +20,20 @@ export function HistoryList({
   onSelect: (item: HistoryItem) => void
 }) {
   // Helper to compute score and level
-  const computeScoreAndLevel = (result: RiskAssessment) => {
-    const stats = result.stats || { harmless: 0, malicious: 0, suspicious: 0, timeout: 0, undetected: 0 }
-    const totalDetections = stats.malicious + stats.suspicious + stats.timeout + stats.undetected
-    const totalChecks = result.total || (totalDetections + stats.harmless) || 1 // fallback to 1 to avoid division by 0
-    const safeScore = Math.round((totalDetections / totalChecks) * 100)
+  const computeScoreAndLevel = (result: any) => {
+    // result may be UrlScanResult or { result: UrlScanResult } (older shape)
+    const r = result?.stats ? result : (result?.result ? result.result : result);
+    const stats = r.stats || { harmless: 0, malicious: 0, suspicious: 0, timeout: 0, undetected: 0 };
+    const totalDetections = stats.malicious + stats.suspicious + stats.timeout + stats.undetected;
+    const totalChecks = r.total || (totalDetections + stats.harmless) || 1;
+    const safeScore = Math.round((totalDetections / totalChecks) * 100);
 
-    let safeLevel: "LOW" | "MEDIUM" | "HIGH" = "LOW"
-    if (safeScore >= 70) safeLevel = "HIGH"
-    else if (safeScore >= 30) safeLevel = "MEDIUM"
+    let safeLevel: "LOW" | "MEDIUM" | "HIGH" = "LOW";
+    if (safeScore >= 70) safeLevel = "HIGH";
+    else if (safeScore >= 30) safeLevel = "MEDIUM";
 
-    return { safeScore, safeLevel }
-  }
+    return { safeScore, safeLevel };
+  };
 
   return (
     <Card>

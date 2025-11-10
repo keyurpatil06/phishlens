@@ -1,9 +1,39 @@
+// app/api/scan/route.ts
 import { NextResponse } from "next/server";
+
+type VTStats = {
+  harmless: number;
+  malicious: number;
+  suspicious: number;
+  timeout: number;
+  undetected: number;
+};
+
+type UrlScanResult = {
+  url: string;
+  stats: VTStats;
+  total: number;
+  malicious: boolean;
+  error?: string;
+};
+
+type EmailScanResponse = {
+  type: "email";
+  totalUrls: number;
+  results: UrlScanResult[];
+  hasMalicious: boolean;
+};
+
+type UrlScanResponse = {
+  type: "url";
+  result: UrlScanResult;
+};
 
 export async function POST(req: Request) {
   try {
-    const { url, email } = await req.json();
-    const apiKey = process.env.API_KEY!;
+    const body = await req.json().catch(() => ({}));
+    const { url, email } = body as { url?: string; email?: string };
+    const apiKey = process.env.API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
@@ -12,85 +42,147 @@ export async function POST(req: Request) {
       );
     }
 
-    async function scanUrl(targetUrl: string) {
-      const params = new URLSearchParams();
-      params.set("url", targetUrl);
-
-      const res = await fetch("https://www.virustotal.com/api/v3/urls", {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          "x-apikey": apiKey,
-          "content-type": "application/x-www-form-urlencoded",
-        },
-        body: params,
-      });
-
-      if (!res.ok)
-        return { url: targetUrl, error: "Failed to submit URL to VirusTotal" };
-
-      const data = await res.json();
-      const analysisId = data?.data?.id;
-      if (!analysisId)
-        return { url: targetUrl, error: "No analysis ID returned" };
-
-      const analysisRes = await fetch(
-        `https://www.virustotal.com/api/v3/analyses/${analysisId}`,
-        {
-          headers: { "x-apikey": apiKey },
-        }
+    // extract urls helper (works for multiple in email)
+    const extractUrls = (text: string) => {
+      if (!text) return [];
+      // simple but practical URL capture (http/https)
+      return Array.from(text.matchAll(/https?:\/\/[^\s'")<>]+/gi)).map((m) =>
+        // trim trailing punctuation
+        m[0].replace(/[.,;:)\]>]+$/g, "")
       );
-      if (!analysisRes.ok)
-        return { url: targetUrl, error: "Failed to fetch analysis results" };
+    };
 
-      const analysisData = await analysisRes.json();
-      const stats = analysisData?.data?.attributes?.stats || {};
+    async function submitUrlToVT(targetUrl: string) {
+      try {
+        const params = new URLSearchParams();
+        params.set("url", targetUrl);
 
-      const total =
-        stats.harmless +
-        stats.malicious +
-        stats.suspicious +
-        stats.timeout +
-        stats.undetected;
-      console.log(stats);
+        const headers: Record<string, string> = {
+          accept: "application/json",
+          "content-type": "application/x-www-form-urlencoded",
+        };
+        if (apiKey) headers["x-apikey"] = apiKey;
 
-      return {
-        url: targetUrl,
-        stats: {
-          harmless: stats.harmless || 0,
-          malicious: stats.malicious || 0,
-          suspicious: stats.suspicious || 0,
-          timeout: stats.timeout || 0,
-          undetected: stats.undetected || 0,
-        },
-        total,
-        malicious: stats.malicious + stats.suspicious > 0,
-      };
+        const submitRes = await fetch(
+          "https://www.virustotal.com/api/v3/urls",
+          {
+            method: "POST",
+            headers,
+            body: params,
+          }
+        );
+
+        if (!submitRes.ok) {
+          const text = await submitRes.text().catch(() => "");
+          return {
+            url: targetUrl,
+            error: `Failed to submit URL: ${text}`,
+          } as UrlScanResult;
+        }
+
+        const data = await submitRes.json().catch(() => ({}));
+        const analysisId = data?.data?.id;
+        if (!analysisId) {
+          return {
+            url: targetUrl,
+            error: "No analysis ID returned",
+          } as UrlScanResult;
+        }
+
+        // Poll analysis endpoint until completed (or timeout)
+        const maxAttempts = 12; // ~12s (with 1s delay)
+        const delayMs = 1000;
+        let attempt = 0;
+        let analysisData: any = null;
+
+        while (attempt < maxAttempts) {
+          attempt++;
+          const headers: Record<string, string> = {};
+          if (apiKey) headers["x-apikey"] = apiKey;
+
+          const analysisRes = await fetch(
+            `https://www.virustotal.com/api/v3/analyses/${analysisId}`,
+            { headers }
+          );
+
+          if (!analysisRes.ok) {
+            // try again unless we've exhausted attempts
+            await new Promise((r) => setTimeout(r, delayMs));
+            continue;
+          }
+
+          analysisData = await analysisRes.json().catch(() => null);
+          const status = analysisData?.data?.attributes?.status;
+          if (status === "completed") break;
+          // else wait then poll again
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
+
+        // if still no analysisData, return with error
+        if (!analysisData) {
+          return {
+            url: targetUrl,
+            error: "Failed to fetch analysis results",
+          } as UrlScanResult;
+        }
+
+        const stats = analysisData?.data?.attributes?.stats || {};
+        // Normalize stats to numbers with defaults
+        const normalized: VTStats = {
+          harmless: Number(stats.harmless || 0),
+          malicious: Number(stats.malicious || 0),
+          suspicious: Number(stats.suspicious || 0),
+          timeout: Number(stats.timeout || 0),
+          undetected: Number(stats.undetected || 0),
+        };
+
+        const total =
+          normalized.harmless +
+          normalized.malicious +
+          normalized.suspicious +
+          normalized.timeout +
+          normalized.undetected;
+
+        return {
+          url: targetUrl,
+          stats: normalized,
+          total,
+          malicious: normalized.malicious + normalized.suspicious > 0,
+        } as UrlScanResult;
+      } catch (err: any) {
+        return {
+          url: targetUrl,
+          error: String(err?.message || err),
+        } as UrlScanResult;
+      }
     }
 
     if (url) {
-      const result = await scanUrl(url);
-      return NextResponse.json({ type: "url", result });
+      const result = await submitUrlToVT(url);
+      return NextResponse.json({ type: "url", result } as UrlScanResponse);
     }
 
     if (email) {
-      const urls = Array.from(email.matchAll(/https?:\/\/[^\s]+/g)).map(
-        (m: any) => m[0]
-      );
-      if (!urls.length)
-        return NextResponse.json({
+      const urls = extractUrls(email);
+      if (urls.length === 0) {
+        const empty: EmailScanResponse = {
           type: "email",
-          message: "No URLs found",
+          totalUrls: 0,
           results: [],
-        });
+          hasMalicious: false,
+        };
+        return NextResponse.json(empty);
+      }
 
-      const results = await Promise.all(urls.map(scanUrl));
-      return NextResponse.json({
+      const results = await Promise.all(urls.map((u) => submitUrlToVT(u)));
+      const hasMalicious = results.some((r) => r.malicious === true);
+      const resp: EmailScanResponse = {
         type: "email",
         totalUrls: urls.length,
         results,
-        hasMalicious: results.some((r) => r.malicious),
-      });
+        hasMalicious,
+      };
+      return NextResponse.json(resp);
     }
 
     return NextResponse.json(
@@ -99,6 +191,9 @@ export async function POST(req: Request) {
     );
   } catch (err: any) {
     console.error("Scan error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { error: String(err?.message || err) },
+      { status: 500 }
+    );
   }
 }
