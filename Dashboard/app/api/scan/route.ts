@@ -1,5 +1,5 @@
-// app/api/scan/route.ts
 import { NextResponse } from "next/server";
+import { checkUrlRules, RuleResult } from "@/lib/rules";
 
 type VTStats = {
   harmless: number;
@@ -11,7 +11,8 @@ type VTStats = {
 
 type UrlScanResult = {
   url: string;
-  stats: VTStats;
+  stats?: VTStats;
+  rules: RuleResult;
   total: number;
   malicious: boolean;
   error?: string;
@@ -42,17 +43,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // extract urls helper (works for multiple in email)
     const extractUrls = (text: string) => {
       if (!text) return [];
-      // simple but practical URL capture (http/https)
       return Array.from(text.matchAll(/https?:\/\/[^\s'")<>]+/gi)).map((m) =>
-        // trim trailing punctuation
         m[0].replace(/[.,;:)\]>]+$/g, "")
       );
     };
 
-    async function submitUrlToVT(targetUrl: string) {
+    async function scanSingleUrl(targetUrl: string): Promise<UrlScanResult> {
+      // 1. Run local rules (Instant)
+      const ruleResult = checkUrlRules(targetUrl);
+
+      // 2. Run VirusTotal (Async)
       try {
         const params = new URLSearchParams();
         params.set("url", targetUrl);
@@ -60,8 +62,8 @@ export async function POST(req: Request) {
         const headers: Record<string, string> = {
           accept: "application/json",
           "content-type": "application/x-www-form-urlencoded",
+          "x-apikey": apiKey!,
         };
-        if (apiKey) headers["x-apikey"] = apiKey;
 
         const submitRes = await fetch(
           "https://www.virustotal.com/api/v3/urls",
@@ -72,117 +74,88 @@ export async function POST(req: Request) {
           }
         );
 
-        if (!submitRes.ok) {
-          const text = await submitRes.text().catch(() => "");
-          return {
-            url: targetUrl,
-            error: `Failed to submit URL: ${text}`,
-          } as UrlScanResult;
-        }
+        if (!submitRes.ok) throw new Error("VT Submit Failed");
 
-        const data = await submitRes.json().catch(() => ({}));
+        const data = await submitRes.json();
         const analysisId = data?.data?.id;
-        if (!analysisId) {
-          return {
-            url: targetUrl,
-            error: "No analysis ID returned",
-          } as UrlScanResult;
-        }
+        if (!analysisId) throw new Error("No analysis ID");
 
-        // Poll analysis endpoint until completed (or timeout)
-        const maxAttempts = 12; // ~12s (with 1s delay)
-        const delayMs = 1000;
         let attempt = 0;
         let analysisData: any = null;
 
-        while (attempt < maxAttempts) {
+        while (attempt < 10) {
           attempt++;
-          const headers: Record<string, string> = {};
-          if (apiKey) headers["x-apikey"] = apiKey;
+          await new Promise((r) => setTimeout(r, 1000)); // 1s wait
 
           const analysisRes = await fetch(
             `https://www.virustotal.com/api/v3/analyses/${analysisId}`,
-            { headers }
+            { headers: { "x-apikey": apiKey! } }
           );
 
-          if (!analysisRes.ok) {
-            // try again unless we've exhausted attempts
-            await new Promise((r) => setTimeout(r, delayMs));
-            continue;
+          if (analysisRes.ok) {
+            analysisData = await analysisRes.json();
+            if (analysisData?.data?.attributes?.status === "completed") break;
           }
-
-          analysisData = await analysisRes.json().catch(() => null);
-          const status = analysisData?.data?.attributes?.status;
-          if (status === "completed") break;
-          // else wait then poll again
-          await new Promise((r) => setTimeout(r, delayMs));
         }
 
-        // if still no analysisData, return with error
-        if (!analysisData) {
-          return {
-            url: targetUrl,
-            error: "Failed to fetch analysis results",
-          } as UrlScanResult;
-        }
+        if (!analysisData) throw new Error("Analysis timeout");
 
-        const stats = analysisData?.data?.attributes?.stats || {};
-        // Normalize stats to numbers with defaults
+        const statsRaw = analysisData?.data?.attributes?.stats || {};
         const normalized: VTStats = {
-          harmless: Number(stats.harmless || 0),
-          malicious: Number(stats.malicious || 0),
-          suspicious: Number(stats.suspicious || 0),
-          timeout: Number(stats.timeout || 0),
-          undetected: Number(stats.undetected || 0),
+          harmless: Number(statsRaw.harmless || 0),
+          malicious: Number(statsRaw.malicious || 0),
+          suspicious: Number(statsRaw.suspicious || 0),
+          timeout: Number(statsRaw.timeout || 0),
+          undetected: Number(statsRaw.undetected || 0),
         };
 
-        const total =
-          normalized.harmless +
-          normalized.malicious +
-          normalized.suspicious +
-          normalized.timeout +
-          normalized.undetected;
+        const total = Object.values(normalized).reduce((a, b) => a + b, 0);
+        const vtMalicious = normalized.malicious + normalized.suspicious > 0;
 
         return {
           url: targetUrl,
           stats: normalized,
+          rules: ruleResult,
           total,
-          malicious: normalized.malicious + normalized.suspicious > 0,
-        } as UrlScanResult;
+          // Flag as malicious if VT confirms it OR Rules give it a very high score (>70)
+          malicious: vtMalicious || ruleResult.riskScore > 70,
+        };
       } catch (err: any) {
+        // Fallback: Return rule result if VT fails
         return {
           url: targetUrl,
-          error: String(err?.message || err),
-        } as UrlScanResult;
+          rules: ruleResult,
+          total: 0,
+          malicious: ruleResult.riskScore > 70,
+          error: "VT Scan Failed, showing local analysis only",
+        };
       }
     }
 
+    // --- Handlers ---
+
     if (url) {
-      const result = await submitUrlToVT(url);
+      const result = await scanSingleUrl(url);
       return NextResponse.json({ type: "url", result } as UrlScanResponse);
     }
 
     if (email) {
       const urls = extractUrls(email);
-      if (urls.length === 0) {
-        const empty: EmailScanResponse = {
+      if (!urls.length)
+        return NextResponse.json({
           type: "email",
           totalUrls: 0,
           results: [],
           hasMalicious: false,
-        };
-        return NextResponse.json(empty);
-      }
+        });
 
-      const results = await Promise.all(urls.map((u) => submitUrlToVT(u)));
-      const hasMalicious = results.some((r) => r.malicious === true);
-      const resp: EmailScanResponse = {
+      const results = await Promise.all(urls.map((u) => scanSingleUrl(u)));
+      return NextResponse.json({
         type: "email",
         totalUrls: urls.length,
         results,
-        hasMalicious,
-      };
-      return NextResponse.json(resp);
+        hasMalicious: results.some((r) => r.malicious),
+      } as EmailScanResponse);
     }
 
     return NextResponse.json(
@@ -190,10 +163,6 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   } catch (err: any) {
-    console.error("Scan error:", err);
-    return NextResponse.json(
-      { error: String(err?.message || err) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

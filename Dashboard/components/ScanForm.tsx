@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-// where you defined postScan (e.g. in ScanForm file)
 import type { RiskAssessment } from "@/lib/types";
 
 async function postScan(
@@ -21,7 +20,6 @@ async function postScan(
   });
 
   if (!res.ok) {
-    // try to get json error first
     let text = await res.text().catch(() => "");
     try {
       const json = JSON.parse(text || "{}");

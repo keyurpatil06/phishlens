@@ -27,5 +27,4 @@ export type EmailScanResponse = {
   hasMalicious: boolean;
 };
 
-// union for convenience
 export type RiskAssessment = UrlScanResponse | EmailScanResponse;
