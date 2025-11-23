@@ -1,12 +1,17 @@
 <!doctype html>
 <html>
-  <head>
+<head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <link rel="stylesheet" href="popup.css"/>
+
+    <!-- LOCAL Chart.js -->
+    <script src="chart.js"></script>
+
     <title>PhishLens</title>
-  </head>
-  <body>
+</head>
+
+<body>
     <header class="head">
       <div class="dot"></div>
       <h1>PhishLens</h1>
@@ -28,6 +33,13 @@
       </ul>
     </section>
 
+    <!-- Graphs -->
+    <h3>Risk Score History</h3>
+    <canvas id="scoreChart" width="300" height="200"></canvas>
+
+    <h3 style="margin-top:20px;">Detection Summary</h3>
+    <canvas id="summaryChart" width="300" height="200"></canvas>
+
     <script src="popup.js"></script>
-  </body>
+</body>
 </html>

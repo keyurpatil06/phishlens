@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import type { RiskAssessment } from "@/lib/types"
 import { ScanForm } from "./ScanForm"
 import { ScanResultView } from "./ScanResult"
-import { HistoryList } from "./HistoryList"
+
 
 type HistoryItem = {
   url: string
@@ -67,14 +67,6 @@ export function PhishDashboard() {
         </div>
       </div>
       <aside className="md:col-span-2">
-        <HistoryList
-          items={history}
-          onClear={handleClearHistory}
-          onSelect={(item) => {
-            setCurrentUrl(item.url)
-            setResult(item.result)
-          }}
-        />
       </aside>
     </div>
   )
