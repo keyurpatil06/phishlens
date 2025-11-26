@@ -1,5 +1,6 @@
 // app/api/scan/route.ts
 import { NextResponse } from "next/server";
+import { getThreatCategory, getThreatInfo, ThreatInfo } from "@/lib/threatInfo";
 
 type VTStats = {
   harmless: number;
@@ -11,9 +12,11 @@ type VTStats = {
 
 type UrlScanResult = {
   url: string;
-  stats: VTStats;
-  total: number;
-  malicious: boolean;
+  stats?: VTStats;
+  total?: number;
+  malicious?: boolean;
+  riskCategory?: string;
+  threatInfo?: ThreatInfo;
   error?: string;
 };
 
@@ -33,7 +36,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const { url, email } = body as { url?: string; email?: string };
-    const apiKey = process.env.API_KEY;
+    const apiKey = process.env.API_KEY || process.env.VIRUSTOTAL_API_KEY || process.env.API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
@@ -45,14 +48,12 @@ export async function POST(req: Request) {
     // extract urls helper (works for multiple in email)
     const extractUrls = (text: string) => {
       if (!text) return [];
-      // simple but practical URL capture (http/https)
       return Array.from(text.matchAll(/https?:\/\/[^\s'")<>]+/gi)).map((m) =>
-        // trim trailing punctuation
         m[0].replace(/[.,;:)\]>]+$/g, "")
       );
     };
 
-    async function submitUrlToVT(targetUrl: string) {
+    async function submitUrlToVT(targetUrl: string): Promise<UrlScanResult> {
       try {
         const params = new URLSearchParams();
         params.set("url", targetUrl);
@@ -90,23 +91,22 @@ export async function POST(req: Request) {
         }
 
         // Poll analysis endpoint until completed (or timeout)
-        const maxAttempts = 12; // ~12s (with 1s delay)
+        const maxAttempts = 20; // try a bit longer
         const delayMs = 1000;
         let attempt = 0;
         let analysisData: any = null;
 
         while (attempt < maxAttempts) {
           attempt++;
-          const headers: Record<string, string> = {};
-          if (apiKey) headers["x-apikey"] = apiKey;
+          const headers2: Record<string, string> = {};
+          if (apiKey) headers2["x-apikey"] = apiKey;
 
           const analysisRes = await fetch(
             `https://www.virustotal.com/api/v3/analyses/${analysisId}`,
-            { headers }
+            { headers: headers2 }
           );
 
           if (!analysisRes.ok) {
-            // try again unless we've exhausted attempts
             await new Promise((r) => setTimeout(r, delayMs));
             continue;
           }
@@ -114,11 +114,9 @@ export async function POST(req: Request) {
           analysisData = await analysisRes.json().catch(() => null);
           const status = analysisData?.data?.attributes?.status;
           if (status === "completed") break;
-          // else wait then poll again
           await new Promise((r) => setTimeout(r, delayMs));
         }
 
-        // if still no analysisData, return with error
         if (!analysisData) {
           return {
             url: targetUrl,
@@ -126,8 +124,12 @@ export async function POST(req: Request) {
           } as UrlScanResult;
         }
 
-        const stats = analysisData?.data?.attributes?.stats || {};
-        // Normalize stats to numbers with defaults
+        // VT stores stats at data.attributes.stats OR in data.relationships
+        const stats =
+          analysisData?.data?.attributes?.stats ||
+          analysisData?.data?.attributes?.results?.stats ||
+          {};
+
         const normalized: VTStats = {
           harmless: Number(stats.harmless || 0),
           malicious: Number(stats.malicious || 0),
@@ -143,11 +145,16 @@ export async function POST(req: Request) {
           normalized.timeout +
           normalized.undetected;
 
+        const riskCategory = getThreatCategory(normalized);
+        const threatInfo = getThreatInfo(riskCategory);
+
         return {
           url: targetUrl,
           stats: normalized,
           total,
           malicious: normalized.malicious + normalized.suspicious > 0,
+          riskCategory,
+          threatInfo,
         } as UrlScanResult;
       } catch (err: any) {
         return {

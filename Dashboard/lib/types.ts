@@ -1,31 +1,58 @@
 // lib/types.ts
-export type VTStats = {
-  harmless: number;
-  malicious: number;
-  suspicious: number;
-  timeout: number;
-  undetected: number;
-};
 
-export type UrlScanResult = {
+// Type for raw VirusTotal URL scan response
+export interface UrlScanResult {
+  type: "url";
   url: string;
-  stats?: VTStats;
+  stats?: {
+    harmless: number;
+    malicious: number;
+    suspicious: number;
+    undetected: number;
+    timeout: number;
+  };
   total?: number;
   malicious?: boolean;
+  suspicious?: boolean;
+
+  // Optional extra fields
+  riskCategory?: string;
+  threatInfo?: {
+    summary: string;
+    explanation: string;
+    tips: string[];
+  };
+
   error?: string;
-};
+}
 
-export type UrlScanResponse = {
-  type: "url";
-  result: UrlScanResult;
-};
+// Type for EACH URL inside an email scan result
+export interface EmailUrlResult {
+  url: string;
+  malicious: boolean;
+  suspicious?: boolean;
+  error?: string;
 
-export type EmailScanResponse = {
+  // Optional enhanced threat fields
+  riskCategory?: string;
+  threatInfo?: {
+    summary: string;
+    explanation: string;
+    tips: string[];
+  };
+}
+
+// Type for the whole email scan
+export interface EmailScanResult {
   type: "email";
   totalUrls: number;
-  results: UrlScanResult[];
-  hasMalicious: boolean;
-};
+  results: EmailUrlResult[];
+}
 
-// union for convenience
-export type RiskAssessment = UrlScanResponse | EmailScanResponse;
+// Unified type for ScanForm + ScanResult
+export type RiskAssessment =
+  | {
+      type: "url";
+      result: UrlScanResult;
+    }
+  | EmailScanResult;

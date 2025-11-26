@@ -1,0 +1,34 @@
+[
+  {
+    "id": "phishing_url_1",
+    "category": "url",
+    "threatType": "phishing",
+    "title": "Phishing URL",
+    "summary": "This link may attempt to steal credentials by imitating a trusted site.",
+    "tips": [
+      "Don't enter passwords on unfamiliar sites.",
+      "Check the domain carefully for misspellings (typosquatting).",
+      "Hover the link to preview the destination before clicking."
+    ],
+    "details": "This URL contains patterns commonly used in phishing such as deceptive domains and redirect chains. Example: 'paypa1.com' instead of 'paypal.com'.",
+    "severity": "high",
+    "locale": "en",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  {
+    "id": "malicious_attachment_1",
+    "category": "file",
+    "threatType": "malware",
+    "title": "Malicious attachment",
+    "summary": "The file contains indicators of malicious behaviour (executable or macro).",
+    "tips": [
+      "Don't open unexpected attachments.",
+      "Scan attachments in an antivirus or sandbox before opening.",
+      "Prefer viewing attachments in a safe viewer or ask the sender to re-send via trusted channels."
+    ],
+    "details": "Attachments with macros or embedded executables are a common infection vector.",
+    "severity": "critical",
+    "locale": "en",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  }
+]

@@ -1,0 +1,58 @@
+import fs from "fs/promises";
+import path from "path";
+
+export type Tip = {
+  id: string;
+  category: "url" | "file" | "domain" | "email" | string;
+  threatType: string;
+  title: string;
+  summary: string;
+  tips: string[];
+  details?: string;
+  severity?: "low"|"medium"|"high"|"critical"|string;
+  locale?: string;
+  lastUpdated?: string;
+};
+
+const DATA_DIR = path.join(process.cwd(), "data");
+
+async function loadTipsForLocale(locale = "en"): Promise<Tip[]> {
+  try {
+    const file = path.join(DATA_DIR, `tips.${locale}.json`);
+    const buf = await fs.readFile(file, "utf8");
+    return JSON.parse(buf) as Tip[];
+  } catch {
+    // fallback to en
+    const file = path.join(DATA_DIR, `tips.en.json`);
+    const buf = await fs.readFile(file, "utf8");
+    return JSON.parse(buf) as Tip[];
+  }
+}
+
+export async function findTips({
+  category,
+  threatTypes,
+  locale = "en",
+  limit = 5,
+}: {
+  category?: string;
+  threatTypes?: string[]; // map from scan engine
+  locale?: string;
+  limit?: number;
+}) {
+  const tips = await loadTipsForLocale(locale);
+  // Filter by category and threatTypes
+  const filtered = tips.filter((t) => {
+    if (category && t.category !== category) return false;
+    if (threatTypes && threatTypes.length > 0) {
+      return threatTypes.includes(t.threatType);
+    }
+    return true;
+  });
+  return filtered.slice(0, limit);
+}
+
+export async function getTipById(id: string, locale = "en"): Promise<Tip | null> {
+  const tips = await loadTipsForLocale(locale);
+  return tips.find((t) => t.id === id) ?? null;
+}
