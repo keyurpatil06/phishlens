@@ -1,4 +1,3 @@
-// components/ScanResult.tsx
 "use client";
 
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +59,11 @@ export function ScanResultView({ url, result }: { url: string; result: RiskAsses
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-pretty">Result for <span className="font-mono">{r.url}</span></CardTitle>
+          <CardTitle className="font-normal">
+            <p className="">
+              Result for - <span className="font-semibold break-all">{r.url}</span>
+            </p>
+          </CardTitle>
         </CardHeader>
 
         <CardContent className="grid gap-4">

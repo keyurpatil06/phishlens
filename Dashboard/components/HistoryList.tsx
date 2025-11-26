@@ -47,7 +47,7 @@ export function HistoryList({
         {items.length === 0 ? (
           <p className="text-muted-foreground text-sm">No scans yet.</p>
         ) : (
-          <ul className="grid gap-2">
+          <ul className="flex flex-col gap-2">
             {items.map((item) => {
               const { safeScore, safeLevel } = computeScoreAndLevel(item.result)
               return (

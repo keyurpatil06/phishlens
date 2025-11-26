@@ -9,7 +9,7 @@ export type Tip = {
   summary: string;
   tips: string[];
   details?: string;
-  severity?: "low"|"medium"|"high"|"critical"|string;
+  severity?: "low" | "medium" | "high" | "critical" | string;
   locale?: string;
   lastUpdated?: string;
 };
@@ -52,7 +52,78 @@ export async function findTips({
   return filtered.slice(0, limit);
 }
 
-export async function getTipById(id: string, locale = "en"): Promise<Tip | null> {
+export async function getTipById(
+  id: string,
+  locale = "en"
+): Promise<Tip | null> {
   const tips = await loadTipsForLocale(locale);
   return tips.find((t) => t.id === id) ?? null;
+}
+
+export async function generateAITips({
+  category,
+  threatTypes,
+  url,
+  locale = "en",
+}: {
+  category?: string;
+  url?: string;
+  threatTypes?: string[];
+  locale?: string;
+}) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error("Missing OPENROUTER_API_KEY");
+  }
+
+  const prompt = `
+    You are a cybersecurity assistant for a browser phishing-detection extension named PhishLens.
+    Generate 5 short, practical, human-friendly security tips.
+
+    Rules:
+    Analyze the url ${url} and base tips on its characteristics, look for anything suspicious, minute details. Don't mention the URL in your response.
+    Tailor tips to the threat category and types provided.
+    Make tips relevant to everyday users with varying tech skills.
+    Focus on category: ${category || "general"}
+    Threat types: ${threatTypes?.join(", ")}
+    Keep them beginner-friendly and action-based
+    Avoid long paragraphs — keep tips crisp
+    Output must be a single JSON object of { title, summary, tips[], severity }
+
+    Example:
+    {
+    "title": "...",
+    "summary": "...",
+    "tips": ["...", "..."],
+    "severity": "low/medium/high/critical"
+    }`.trim();
+
+  const response = await fetch(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "x-ai/grok-4.1-fast:free",
+        messages: [
+          { role: "system", content: "You are a cybersecurity assistant." },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.4,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`AI Tip Generation Failed: ${err}`);
+  }
+
+  const data = await response.json();
+  const raw = data?.choices?.[0]?.message?.content;
+
+  return raw;
 }

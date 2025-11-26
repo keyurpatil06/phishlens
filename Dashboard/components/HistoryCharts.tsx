@@ -13,7 +13,6 @@ import {
 } from "chart.js";
 import type { RiskAssessment } from "@/lib/types";
 
-// Register chart.js parts
 ChartJS.register(
   LineElement,
   BarElement,
@@ -24,7 +23,6 @@ ChartJS.register(
   Legend
 );
 
-// SAME type used in PhishDashboard
 type HistoryItem = {
   url: string;
   result: RiskAssessment;
@@ -33,7 +31,6 @@ type HistoryItem = {
 
 type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
 
-// Same logic your HistoryList uses
 function computeScoreAndLevel(result: any): { safeScore: number; safeLevel: RiskLevel } {
   const r = result?.stats ? result : (result?.result ? result.result : result);
 
@@ -113,10 +110,6 @@ export default function HistoryCharts({ history }: { history: HistoryItem[] }) {
       },
     ],
   };
-
-  // ------------------------------
-  // Render UI
-  // ------------------------------
 
   return (
     <div className="grid gap-6 mt-6">

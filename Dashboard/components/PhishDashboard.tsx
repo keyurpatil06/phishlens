@@ -7,15 +7,11 @@ import { ScanResultView } from "./ScanResult"
 import HistoryCharts from "./HistoryCharts";
 import { HistoryList } from "./HistoryList";
 
-
-
-
 type HistoryItem = {
   url: string;
   result: any;
   timestamp: number;
 };
-
 
 const HISTORY_KEY = "phishlens:history"
 
@@ -72,18 +68,18 @@ export function PhishDashboard() {
         </div>
       </div>
       <aside className="md:col-span-2">
-  <HistoryList
-    items={history}
-    onClear={handleClearHistory}
-    onSelect={(item: HistoryItem) => {
-      setCurrentUrl(item.url);
-      setResult(item.result);
-    }}
-  />
+        <HistoryList
+          items={history}
+          onClear={handleClearHistory}
+          onSelect={(item: HistoryItem) => {
+            setCurrentUrl(item.url);
+            setResult(item.result);
+          }}
+        />
 
-  <HistoryCharts history={history} />
+        <HistoryCharts history={history} />
 
-</aside>
+      </aside>
 
     </div>
   )

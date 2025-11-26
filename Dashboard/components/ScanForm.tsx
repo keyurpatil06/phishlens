@@ -7,9 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { getThreatInfo } from "@/lib/threatInfo";
-
-// where you defined postScan (e.g. in ScanForm file)
 import type { RiskAssessment } from "@/lib/types";
 
 async function postScan(

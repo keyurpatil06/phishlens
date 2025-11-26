@@ -1,6 +1,6 @@
 // app/api/scan/route.ts
 import { NextResponse } from "next/server";
-import { getThreatCategory, getThreatInfo, ThreatInfo } from "@/lib/threatInfo";
+import { getThreatInfo, ThreatInfo } from "@/lib/threatInfo";
 
 type VTStats = {
   harmless: number;
@@ -32,11 +32,21 @@ type UrlScanResponse = {
   result: UrlScanResult;
 };
 
+function determineRiskCategory(stats: VTStats): string {
+  if (stats.malicious > 0) return "malicious";
+  if (stats.suspicious > 0) return "suspicious";
+  if (stats.harmless > 0) return "harmless";
+  return "unrated";
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const { url, email } = body as { url?: string; email?: string };
-    const apiKey = process.env.API_KEY || process.env.VIRUSTOTAL_API_KEY || process.env.API_KEY;
+    const apiKey =
+      process.env.API_KEY ||
+      process.env.VIRUSTOTAL_API_KEY ||
+      process.env.API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
@@ -145,8 +155,8 @@ export async function POST(req: Request) {
           normalized.timeout +
           normalized.undetected;
 
-        const riskCategory = getThreatCategory(normalized);
-        const threatInfo = getThreatInfo(riskCategory);
+        const riskCategory = determineRiskCategory(normalized);
+        const threatInfo = await getThreatInfo(riskCategory, targetUrl);
 
         return {
           url: targetUrl,
@@ -155,7 +165,7 @@ export async function POST(req: Request) {
           malicious: normalized.malicious + normalized.suspicious > 0,
           riskCategory,
           threatInfo,
-        } as UrlScanResult;
+        };
       } catch (err: any) {
         return {
           url: targetUrl,
