@@ -5,6 +5,7 @@ export type ThreatInfo = {
   explanation: string;
   tips: string[];
   severity?: "low" | "medium" | "high" | "critical";
+  score?: number;
 };
 
 export const threatExplanations: Record<string, string> = {
@@ -27,6 +28,7 @@ export async function getThreatInfo(
     explanation: threatExplanations[category] || threatExplanations["unrated"],
     tips: ["Follow standard cybersecurity practices."],
     severity: "medium",
+    score: 50,
   };
 
   try {
@@ -39,7 +41,7 @@ export async function getThreatInfo(
     });
 
     // Extract JSON object safely
-    const jsonMatch = aiRaw.match(/\{[\s\S]*\}/);
+    const jsonMatch = aiRaw?.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return def;
 
     const aiData: Partial<{
@@ -47,6 +49,7 @@ export async function getThreatInfo(
       summary: string;
       tips: string[];
       severity: string;
+      score: number;
     }> = JSON.parse(jsonMatch[0]);
 
     return {
@@ -57,6 +60,7 @@ export async function getThreatInfo(
         "Follow standard cybersecurity practices.",
       ],
       severity: (aiData.severity as ThreatInfo["severity"]) || "medium",
+      score: aiData.score,
     };
   } catch (err) {
     console.error("AI tip generation failed, using default tips:", err);

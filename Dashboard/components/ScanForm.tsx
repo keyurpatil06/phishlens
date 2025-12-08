@@ -1,38 +1,34 @@
 "use client"
 
-import React, { useState } from "react"
+import type React from "react"
+import { useState } from "react"
 import useSWRMutation from "swr/mutation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import type { RiskAssessment } from "@/lib/types";
+import type { RiskAssessment } from "@/lib/types"
 
-async function postScan(
-  _key: string,
-  { arg }: { arg: { url?: string; email?: string } }
-): Promise<RiskAssessment> {
+async function postScan(_key: string, { arg }: { arg: { url?: string; email?: string } }): Promise<RiskAssessment> {
   const res = await fetch("/api/scan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(arg),
-  });
+  })
 
   if (!res.ok) {
-    // try to get json error first
-    let text = await res.text().catch(() => "");
+    const text = await res.text().catch(() => "")
     try {
-      const json = JSON.parse(text || "{}");
-      throw new Error(json.error || text || "Scan failed");
+      const json = JSON.parse(text || "{}")
+      throw new Error(json.error || text || "Scan failed")
     } catch {
-      throw new Error(text || "Scan failed");
+      throw new Error(text || "Scan failed")
     }
   }
 
-  return (await res.json()) as RiskAssessment;
+  return (await res.json()) as RiskAssessment
 }
-
 
 export function ScanForm({
   onScanned,
@@ -58,50 +54,66 @@ export function ScanForm({
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="grid gap-5 p-6 bg-card rounded-xl border border-border shadow-sm"
-    >
-      {/* --- Mode Switch --- */}
-      <div className="flex justify-center gap-3">
+    <form onSubmit={onSubmit} className="space-y-6">
+      {/* Mode Toggle */}
+      <div className="flex gap-3 p-1 bg-secondary rounded-lg w-fit border border-border">
         <Button
           type="button"
-          variant={mode === "url" ? "default" : "outline"}
+          variant={mode === "url" ? "default" : "ghost"}
           onClick={() => setMode("url")}
-          className="w-1/2"
+          className="rounded-lg"
+          size="sm"
         >
           URL Scan
         </Button>
         <Button
           type="button"
-          variant={mode === "email" ? "default" : "outline"}
+          variant={mode === "email" ? "default" : "ghost"}
           onClick={() => setMode("email")}
-          className="w-1/2"
+          className="rounded-lg"
+          size="sm"
         >
           Email Scan
         </Button>
       </div>
 
-      {/* --- Input Section --- */}
-      <div className="grid gap-2">
-        <Label htmlFor={mode}>
+      {/* Card */}
+      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6 shadow-xl hover:border-border/80 transition-colors">
+        {/* Input Label */}
+        <Label htmlFor={mode} className="text-sm font-semibold mb-3 block">
           {mode === "url" ? "Enter URL to check" : "Paste email content"}
         </Label>
 
         {mode === "url" ? (
-          <div className="flex items-center gap-2">
-            <Input
-              id="url"
-              type="url"
-              placeholder="https://example.com/login"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className={cn("flex-1")}
-              aria-describedby="url-help"
-              required
-            />
-            <Button type="submit" disabled={isMutating}>
-              {isMutating ? "Scanning..." : "Scan"}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <Input
+                id="url"
+                type="url"
+                placeholder="https://example.com/login"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className={cn("bg-input border-border/50 rounded-lg", "border-primary ring-primary")}
+                aria-describedby="url-help"
+                required
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={isMutating}
+              className="rounded-lg bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+            >
+              {isMutating ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Scanning
+                </>
+              ) : (
+                <>
+                  <span className="mr-2">🔍</span>
+                  Scan
+                </>
+              )}
             </Button>
           </div>
         ) : (
@@ -112,22 +124,34 @@ export function ScanForm({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               rows={6}
-              className="resize-none"
+              className="resize-none bg-input border-border/50 rounded-lg focus:ring-primary"
               required
             />
-            <Button type="submit" disabled={isMutating} className="self-end w-fit">
-              {isMutating ? "Scanning..." : "Scan Email"}
+            <Button
+              type="submit"
+              disabled={isMutating}
+              className="mt-4 rounded-lg bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+            >
+              {isMutating ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Scanning
+                </>
+              ) : (
+                <>
+                  <span className="mr-2">📧</span>
+                  Scan Email
+                </>
+              )}
             </Button>
           </>
         )}
 
-        <p
-          id="url-help"
-          className="text-sm text-muted-foreground leading-relaxed"
-        >
+        {/* Help Text */}
+        <p id="url-help" className="text-xs text-muted-foreground mt-3 leading-relaxed">
           {mode === "url"
-            ? "We check VirusTotal's database for known malicious URLs, HTTPS usage, and risky domains."
-            : "We scan all links in the email with VirusTotal and detect phishing patterns or impersonations."}
+            ? "✓ VirusTotal database check • ✓ Malicious domain detection"
+            : "✓ Link analysis • ✓ Phishing pattern detection"}
         </p>
       </div>
     </form>

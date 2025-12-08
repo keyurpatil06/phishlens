@@ -19,50 +19,75 @@ export function HistoryList({
   onClear: () => void
   onSelect: (item: HistoryItem) => void
 }) {
-  // Helper to compute score and level
   const computeScoreAndLevel = (result: any) => {
-    // result may be UrlScanResult or { result: UrlScanResult } (older shape)
-    const r = result?.stats ? result : (result?.result ? result.result : result);
-    const stats = r.stats || { harmless: 0, malicious: 0, suspicious: 0, timeout: 0, undetected: 0 };
-    const totalDetections = stats.malicious + stats.suspicious + stats.timeout + stats.undetected;
-    const totalChecks = r.total || (totalDetections + stats.harmless) || 1;
-    const safeScore = Math.round((totalDetections / totalChecks) * 100);
 
-    let safeLevel: "LOW" | "MEDIUM" | "HIGH" = "LOW";
-    if (safeScore >= 70) safeLevel = "HIGH";
-    else if (safeScore >= 30) safeLevel = "MEDIUM";
+    // console.log(result.result);
 
-    return { safeScore, safeLevel };
-  };
+    const r = result?.stats ? result : result?.result ? result.result : result
+    const stats = r.stats || { harmless: 0, malicious: 0, suspicious: 0, timeout: 0, undetected: 0 }
+    const totalDetections = stats.malicious + stats.suspicious + stats.timeout + stats.undetected
+    const totalChecks = r.total || totalDetections + stats.harmless || 1
+    // const safeScore = Math.round((totalDetections / totalChecks) * 100)
+    const safeScore = result.result?.threatInfo.score || 0
+
+    let safeLevel: "LOW" | "MEDIUM" | "HIGH" = "LOW"
+    if (safeScore >= 70) safeLevel = "HIGH"
+    else if (safeScore >= 30) safeLevel = "MEDIUM"
+
+    return { safeScore, safeLevel }
+  }
 
   return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="text-base">History</CardTitle>
-        <Button variant="outline" size="sm" onClick={onClear} aria-label="Clear history">
+    <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
+      <CardHeader className="flex-row items-center justify-between pb-3 border-b border-border/30">
+        <CardTitle className="text-base">Scan History</CardTitle>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClear}
+          className="text-xs text-white font-semibold bg-destructive/80 hover:bg-destructive cursor-pointer"
+          aria-label="Clear history"
+        >
           Clear
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         {items.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No scans yet.</p>
+          <p className="text-xs text-muted-foreground text-center py-6">No scans yet.</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="space-y-2">
             {items.map((item) => {
               const { safeScore, safeLevel } = computeScoreAndLevel(item.result)
+              const levelColor =
+                safeLevel === "HIGH"
+                  ? "text-destructive"
+                  : safeLevel === "MEDIUM"
+                    ? "text-yellow-400"
+                    : "text-green-400"
+
               return (
                 <li key={`${item.url}-${item.timestamp}`}>
                   <button
-                    className="w-full rounded-md border p-2 text-left hover:bg-accent hover:text-accent-foreground"
+                    className="w-full text-left rounded-lg border border-border/50 bg-secondary/30 p-3 hover:bg-secondary/60 transition-colors group"
                     onClick={() => onSelect(item)}
                     aria-label={`Load result for ${item.url}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="truncate font-medium text-wrap">{item.url}</span>
-                      <span className="text-muted-foreground text-xs">{new Date(item.timestamp).toLocaleString()}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xs font-mono truncate flex-1 text-foreground/80 group-hover:text-foreground">
+                        {item.url}
+                      </span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(item.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
                     </div>
-                    <div className="text-muted-foreground text-xs">
-                      Score {safeScore} • {safeLevel}
+                    <div className="flex items-center justify-between mt-2">
+                      <span className={`text-xs font-bold ${levelColor}`}>Risk: {safeScore}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {safeLevel === "LOW" ? "✓ Safe" : safeLevel === "MEDIUM" ? "⚠️ Caution" : "🔴 High Risk"}
+                      </span>
                     </div>
                   </button>
                 </li>

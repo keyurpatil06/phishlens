@@ -4,14 +4,14 @@ import { useCallback, useEffect, useState } from "react"
 import type { RiskAssessment } from "@/lib/types"
 import { ScanForm } from "./ScanForm"
 import { ScanResultView } from "./ScanResult"
-import HistoryCharts from "./HistoryCharts";
-import { HistoryList } from "./HistoryList";
+import HistoryCharts from "./HistoryCharts"
+import { HistoryList } from "./HistoryList"
 
 type HistoryItem = {
-  url: string;
-  result: any;
-  timestamp: number;
-};
+  url: string
+  result: any
+  timestamp: number
+}
 
 const HISTORY_KEY = "phishlens:history"
 
@@ -60,27 +60,27 @@ export function PhishDashboard() {
   }, [])
 
   return (
-    <div className="grid gap-6 md:grid-cols-5">
-      <div className="md:col-span-3">
+    <div className="grid gap-8 lg:grid-cols-5">
+      {/* Main scanning area */}
+      <div className="lg:col-span-3 space-y-8">
         <ScanForm onScanned={handleScanned} />
-        <div className="mt-6">
+        <div>
           <ScanResultView url={currentUrl} result={result} />
         </div>
       </div>
-      <aside className="md:col-span-2">
+
+      {/* Sidebar */}
+      <aside className="lg:col-span-2 space-y-8">
         <HistoryList
           items={history}
           onClear={handleClearHistory}
           onSelect={(item: HistoryItem) => {
-            setCurrentUrl(item.url);
-            setResult(item.result);
+            setCurrentUrl(item.url)
+            setResult(item.result)
           }}
         />
-
         <HistoryCharts history={history} />
-
       </aside>
-
     </div>
   )
 }

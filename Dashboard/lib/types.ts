@@ -14,6 +14,11 @@ export interface UrlScanResult {
   total?: number;
   malicious?: boolean;
   suspicious?: boolean;
+  ruleBasedCheck: {
+    score: number;
+    level: "low" | "medium" | "high";
+    reasons: string[];
+  };
 
   // Optional extra fields
   riskCategory?: string;
@@ -21,6 +26,8 @@ export interface UrlScanResult {
     summary: string;
     explanation: string;
     tips: string[];
+    score?: number;
+    severity?: string;
   };
 
   error?: string;
@@ -39,6 +46,8 @@ export interface EmailUrlResult {
     summary: string;
     explanation: string;
     tips: string[];
+    score?: number;
+    severity?: string;
   };
 }
 
