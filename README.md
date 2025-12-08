@@ -1,4 +1,4 @@
-# 🛡️ PhishGuard – Chrome Extension
+# 🛡️ PhishLens – Chrome Extension
 
 A lightweight **Manifest V3 Chrome Extension** that detects phishing attempts in Gmail and Outlook Web.  
 Uses local heuristics and free API (VirusTotal) to analyze email content and links.  
