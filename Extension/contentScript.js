@@ -83,7 +83,7 @@ function ensureBanner() {
   el.innerHTML = `
     <div style="padding:12px 14px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:8px;">
       <div style="width:10px;height:10px;border-radius:9999px;background:#a3a3a3;" id="pg-dot"></div>
-      <strong style="font-size:14px;">PhishGuard</strong>
+      <strong style="font-size:14px;">PhishLens</strong>
       <div style="margin-left:auto;font-size:12px;color:#64748b" id="pg-level">—</div>
     </div>
     <div style="padding:12px 14px;font-size:13px;color:#111827" id="pg-body"></div>

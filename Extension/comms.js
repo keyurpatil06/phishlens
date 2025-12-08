@@ -9,7 +9,7 @@ async function getCfg() {
 async function sendToDashboard(payload) {
   const cfg = await getCfg();
   if (!cfg.DASHBOARD_URL) return;
-  const url = cfg.DASHBOARD_URL.replace(/\/+$/, "") + "/api/email-scan";
+  const url = cfg.DASHBOARD_URL.replace(/\/+$/, "") + "/api/scan";
   const send = async (data) => {
     const r = await fetch(url, {
       method: "POST",
